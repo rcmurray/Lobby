@@ -16,9 +16,9 @@ overFillRooms = False
 urlPrefix = "http://bazaar.lti.cs.cmu.edu/room"
 nextRoomNum = 0
 
-class RoomAssignmentPriority(Enum):
-    leastUsers_MaxAge = 1
-    leastUsers_MinAge = 2
+# class RoomAssignmentPriority(Enum):
+#     leastUsers_MaxAge = 1
+#     leastUsers_MinAge = 2
 
 roomPriority = RoomAssignmentPriority.leastUsers_MaxAge
 
