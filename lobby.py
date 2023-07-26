@@ -44,7 +44,7 @@ def new_user(user_id):
 
         # If user already assigned to a room, reassign
         if room is not None:
-            reassign_room[user,room]
+            reassign_room(user, room)
 
         # else previously logged-in user must already be in the unassignedUsers list
         #      -- but double-checking as a failsafe
@@ -58,7 +58,7 @@ def new_user(user_id):
         unassignedUsers.append(user)
 
 
-def reassign_room(user,room):
+def reassign_room(user, room):
     print("user_id " + user['user_id'] + ": RETURN to URL " + room['url'])
 
 def print_uus():

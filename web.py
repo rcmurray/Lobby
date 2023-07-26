@@ -23,6 +23,7 @@ def login_post(username):
     # return (users[username]['room'])
     # return str((users[username]['start_time']))
     # return new_user({escape(username)})
+    assign_rooms()
     user = users[username]
     if user['room'] is None:
         return "Lobby URL: ..."
