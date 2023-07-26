@@ -19,8 +19,15 @@ def login():
 def login_post(username):
     global users
     new_user(username)
-    return str(users[-1]['start_time'])
+    # return str(users[-1]['start_time'])
+    # return (users[username]['room'])
+    # return str((users[username]['start_time']))
     # return new_user({escape(username)})
+    user = users[username]
+    if user['room'] is None:
+        return "Lobby URL: ..."
+    else:
+        return user['room']
 
 @app.route('/hello')
 def hello():

@@ -19,14 +19,13 @@ nextRoomNum = 0
 # class RoomAssignmentPriority(Enum):
 #     leastUsers_MaxAge = 1
 #     leastUsers_MinAge = 2
-
-roomPriority = RoomAssignmentPriority.leastUsers_MaxAge
+# roomPriority = RoomAssignmentPriority.leastUsers_MaxAge
 
 
 rooms = []
 availableRooms = []
 roomsUnderTarget = []
-users = []
+users = {}
 unassignedUsers = []
 
 def new_users(num_users):
@@ -55,7 +54,7 @@ def new_user(user_id):
     # This is a new user
     else:
         user = {'user_id': user_id, 'start_time': time.time(), 'room': None}
-        users.append(user)
+        users[user_id] = user
         unassignedUsers.append(user)
 
 
