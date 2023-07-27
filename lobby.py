@@ -13,23 +13,45 @@ user_queue = queue.Queue()
 
 # Worker function for the consumer
 def worker():
+    global users
     while True:
+        print("Entering worker")
         user_id = user_queue.get()
         if user_id is None:
+            print("worker: user_id is None")
             break
+        else:
+            user = {'user_id': user_id, 'start_time': time.time(), 'room': None}
+            users[user_id] = user
+            print("worker - user " + str(user_id) + " start_time: " + str(user['start_time']))
+            unassignedUsers.append(user)
+            print("worker - len(unassignedUsers) = " + str(len(unassignedUsers)))
+
+        print("Leaving worker")
 
         # Process the user
-        result = f"Processed: {user_id}"
-        print(result)
+        # assign_rooms()
+        # user = users[user_id]
+        # room = user['room']
+        # print("For " + str(user_id) + ", room is ", end = '')
+        # if room is None:
+        #     print("127.0.0.1:5000/login/USER_ID")
+        # else:
+        #     print(room)
+
+
 
 # Create and start the consumer thread
 consumer_thread = threading.Thread(target=worker)
 consumer_thread.start()
 
 # Route to handle incoming users from the web interface
-@app.get('/login/<user_id>')
+# @app.get('/login/<user_id>')
+@app.route('/login/<user_id>', methods=['GET', 'POST'])
 def login_get(user_id):
     user_queue.put(user_id)
+    print("Received user_id " + str(user_id))
+    print("User queue length: " + str(user_queue.qsize()))
     return user_id
     # task_data = request.json
     # if 'task' in task_data:
@@ -38,6 +60,7 @@ def login_get(user_id):
     #     return jsonify({"status": "Task added successfully."})
     #
     # return jsonify({"error": "Invalid request."}), 400
+
 
 # Main route to display the web interface
 @app.route('/')
