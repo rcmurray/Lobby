@@ -8,37 +8,33 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Queue to hold the tasks
-task_queue = queue.Queue()
-
-
+# Queue to hold the users
+user_queue = queue.Queue()
 
 # Worker function for the consumer
 def worker():
     while True:
-        task = task_queue.get()
-        if task is None:
+        user_id = user_queue.get()
+        if user_id is None:
             break
 
-        # Process the task (replace this with your actual task processing logic)
-        result = f"Processed: {task}"
+        # Process the user
+        result = f"Processed: {user_id}"
         print(result)
 
 # Create and start the consumer thread
 consumer_thread = threading.Thread(target=worker)
 consumer_thread.start()
 
-# Route to handle incoming tasks from the web interface
-# @app.route('/add_task', methods=['POST','GET'])
-@app.get('/login/<username>')
-def login_get(username):
-# def add_task(username):
-    task_queue.put(username)
-    return username
+# Route to handle incoming users from the web interface
+@app.get('/login/<user_id>')
+def login_get(user_id):
+    user_queue.put(user_id)
+    return user_id
     # task_data = request.json
     # if 'task' in task_data:
     #     task = task_data['task']
-    #     task_queue.put(task)
+    #     user_queue.put(task)
     #     return jsonify({"status": "Task added successfully."})
     #
     # return jsonify({"error": "Invalid request."}), 400
@@ -46,11 +42,11 @@ def login_get(username):
 # Main route to display the web interface
 @app.route('/')
 def index():
-    return "Welcome to the Producer-Consumer Queue!"
+    return "Welcome to the Lobby! Enter 127.0.0.1:5000/login/USER_ID"
 
 # Shut down the consumer thread when the server stops
 def shutdown_server():
-    task_queue.put(None)
+    user_queue.put(None)
     consumer_thread.join()
 
 if __name__ == '__main__':
