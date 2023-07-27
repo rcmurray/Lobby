@@ -11,74 +11,6 @@ app = Flask(__name__)
 # Queue to hold the users
 user_queue = queue.Queue()
 
-# Worker function for the consumer
-def worker():
-    global users
-    while True:
-        print("Entering worker")
-        user_id = user_queue.get()
-        if user_id is None:
-            print("worker: user_id is None")
-            break
-        else:
-            user = {'user_id': user_id, 'start_time': time.time(), 'room': None}
-            users[user_id] = user
-            print("worker - user " + str(user_id) + " start_time: " + str(user['start_time']))
-            unassignedUsers.append(user)
-            print("worker - len(unassignedUsers) = " + str(len(unassignedUsers)))
-
-        print("Leaving worker")
-
-        # Process the user
-        # assign_rooms()
-        # user = users[user_id]
-        # room = user['room']
-        # print("For " + str(user_id) + ", room is ", end = '')
-        # if room is None:
-        #     print("127.0.0.1:5000/login/USER_ID")
-        # else:
-        #     print(room)
-
-
-
-# Create and start the consumer thread
-consumer_thread = threading.Thread(target=worker)
-consumer_thread.start()
-
-# Route to handle incoming users from the web interface
-# @app.get('/login/<user_id>')
-@app.route('/login/<user_id>', methods=['GET', 'POST'])
-def login_get(user_id):
-    user_queue.put(user_id)
-    print("Received user_id " + str(user_id))
-    print("User queue length: " + str(user_queue.qsize()))
-    return user_id
-    # task_data = request.json
-    # if 'task' in task_data:
-    #     task = task_data['task']
-    #     user_queue.put(task)
-    #     return jsonify({"status": "Task added successfully."})
-    #
-    # return jsonify({"error": "Invalid request."}), 400
-
-
-# Main route to display the web interface
-@app.route('/')
-def index():
-    return "Welcome to the Lobby! Enter 127.0.0.1:5000/login/USER_ID"
-
-# Shut down the consumer thread when the server stops
-def shutdown_server():
-    user_queue.put(None)
-    consumer_thread.join()
-
-if __name__ == '__main__':
-    app.run(debug=True, threaded=True)
-
-    # When the server is shut down, stop the consumer thread as well
-    shutdown_server()
-
-
 targetUsersPerRoom = 4
 minUsersPerRoom = 2
 maxUsersPerRoom = 6
@@ -103,6 +35,86 @@ availableRooms = []
 roomsUnderTarget = []
 users = {}
 unassignedUsers = []
+
+# Route to handle incoming users from the web interface
+# @app.get('/login/<user_id>')
+@app.route('/login/<user_id>', methods=['GET', 'POST'])
+def login_get(user_id):
+    user_queue.put(user_id)
+    print("Login: received user_id " + str(user_id))
+    print("Login - user_queue length: " + str(user_queue.qsize()))
+    return user_id
+    # task_data = request.json
+    # if 'task' in task_data:
+    #     task = task_data['task']
+    #     user_queue.put(task)
+    #     return jsonify({"status": "Task added successfully."})
+    #
+    # return jsonify({"error": "Invalid request."}), 400
+
+
+# Plain lobby route
+@app.route('/')
+def index():
+    return "Welcome to the Lobby! Enter 127.0.0.1:5000/login/USER_ID"
+
+# Worker function for the consumer
+def worker():
+    global users, unassignedUsers
+    while True:
+        print("Entering worker")
+        while not user_queue.empty():
+            print("worker: queue not empty")
+            user_id = user_queue.get()
+            if user_id is None:
+                print("worker: user_id is None")
+                break
+            else:
+
+                # If user has previously logged in
+                if user_id in users:
+                    user = users[user_id]
+                    room = user['room']
+
+                    # If user already assigned to a room, reassign
+                    if room is not None:
+                        reassign_room(user, room)
+
+                    # else previously logged-in user should already be in the unassignedUsers list
+                    #      -- but double-checking as a failsafe
+                    elif user not in unassignedUsers:
+                        unassignedUsers.append(user)
+
+                # This is a new user
+                else:
+                    user = {'user_id': user_id, 'start_time': time.time(), 'room': None}
+                    users[user_id] = user
+                    print("worker - user " + str(user_id) + " start_time: " + str(user['start_time']))
+                    unassignedUsers.append(user)
+                    print("worker - len(unassignedUsers) = " + str(len(unassignedUsers)))
+
+        if len(unassignedUsers) > 0:
+            assign_rooms()
+        time.sleep(1)
+    print("Leaving worker")
+
+
+
+# Create and start the consumer thread
+consumer_thread = threading.Thread(target=worker)
+consumer_thread.start()
+
+# Shut down the consumer thread when the server stops
+def shutdown_server():
+    user_queue.put(None)
+    consumer_thread.join()
+
+if __name__ == '__main__':
+    app.run(debug=True, threaded=True)
+
+    # When the server is shut down, stop the consumer thread as well
+    shutdown_server()
+
 
 def new_users(num_users):
     next_user_id = 0
@@ -135,13 +147,30 @@ def new_user(user_id):
 
 
 def reassign_room(user, room):
-    print("user_id " + user['user_id'] + ": RETURN to URL " + room['url'])
+    print("reassign_room - user_id " + user['user_id'] + ": RETURN to URL " + room['url'])
 
 def print_uus():
     print(unassignedUsers)
 
 
 def assign_rooms():
+    global unassignedUsers
+    if len(unassignedUsers) > 0:
+        if fillRoomsUnderTarget:
+            fill_rooms_under_target()
+        if len(unassignedUsers) >= targetUsersPerRoom:
+            assign_new_rooms(targetUsersPerRoom)
+        if (len(unassignedUsers) > 0) and overFillRooms:
+            overfill_rooms()
+        if len(unassignedUsers) > 0:
+            users_due_for_suboptimal = get_users_due_for_suboptimal()
+            if len(users_due_for_suboptimal) > 0:
+                assign_new_room(len(users_due_for_suboptimal))
+    unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
+
+
+
+def assign_rooms_PREVIOUS():
     global unassignedUsers
     i = 0
     while True:
@@ -159,6 +188,7 @@ def assign_rooms():
                     assign_new_room(len(users_due_for_suboptimal))
         unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
         time.sleep(1)
+
 
 
 # If filling rooms that are under target before adding new rooms
