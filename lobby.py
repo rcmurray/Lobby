@@ -95,6 +95,7 @@ def worker():
 
         if len(unassignedUsers) > 0:
             assign_rooms()
+            print_room_assignments()
         time.sleep(1)
     print("Leaving worker")
 
@@ -167,6 +168,7 @@ def assign_rooms():
             if len(users_due_for_suboptimal) >= minUsersPerRoom:
                 assign_new_room(len(users_due_for_suboptimal))
     unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
+
 
 
 
@@ -328,6 +330,19 @@ def prune_users():
             print("user_id " + str(user['user_id']) + ": I'm sorry. There are not enough other users logged in right now to start a session. Please try again later.")
             unassignedUsers.remove(user)
     return unassignedUsers
+
+def print_room_assignments():
+    global rooms
+    if len(rooms) > 0:
+        for room in rooms:
+            print("Room url: "+ room['url'])
+            for user in room['users']:
+                print("   User: " + user['user_id'])
+    else:
+        print("No rooms yet")
+
+
+
 
 
 
