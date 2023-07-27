@@ -4,7 +4,7 @@ from operator import attrgetter
 from operator import itemgetter
 import threading
 import queue
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
@@ -43,7 +43,8 @@ def login_get(user_id):
     user_queue.put(user_id)
     print("Login: received user_id " + str(user_id))
     print("Login - user_queue length: " + str(user_queue.qsize()))
-    return user_id
+    # return user_id
+    return render_template('lobby.html')
     # task_data = request.json
     # if 'task' in task_data:
     #     task = task_data['task']
