@@ -164,7 +164,7 @@ def assign_rooms():
             overfill_rooms()
         if len(unassignedUsers) > 0:
             users_due_for_suboptimal = get_users_due_for_suboptimal()
-            if len(users_due_for_suboptimal) > 0:
+            if len(users_due_for_suboptimal) >= minUsersPerRoom:
                 assign_new_room(len(users_due_for_suboptimal))
     unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
 
