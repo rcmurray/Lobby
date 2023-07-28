@@ -19,19 +19,28 @@
 				<p>As soon as you are matched, we'll send you a link so you can start.</p>
                 <br/>
                 <button id="startButton">Enter the Lobby</button>
+                <br/>
+                <br/>
                 <div id="status"></div>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
                 <script type="text/javascript">
+                    const statusContainer = document.getElementById('status');
+
                     var socket = io.connect();
 
-                    document.getElementById('startButton').addEventListener('click', function() {
-                        socket.emit('start_task', "Rob200");
-                        document.getElementById('status').innerHTML = 'Task in progress...';
-                    });
+                    document.getElementById('startButton').addEventListener('click', addText);
 
                     socket.on('task_completed', function(data) {
                         document.getElementById('status').innerHTML = data.message;
                     });
+
+                    function addText() {
+
+                        socket.emit('start_task', "Rob200");
+                        document.getElementById('status').innerHTML = 'Task in progress...';
+<!--                        const taskInProgress = document.createTextNode("Task in progress...");-->
+                        statusContainer.appendChild(taskInProgress);
+                      }
                 </script>
 	            <br/>
 			</fieldset>
