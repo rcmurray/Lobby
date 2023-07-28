@@ -5,8 +5,10 @@ from operator import itemgetter
 import threading
 import queue
 from flask import Flask, request, jsonify, render_template
+from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 # Queue to hold the users
 user_queue = queue.Queue()
@@ -37,21 +39,22 @@ users = {}
 unassignedUsers = []
 
 # Route to handle incoming users from the web interface
-# @app.get('/login/<user_id>')
 @app.route('/login/<user_id>', methods=['GET', 'POST'])
 def login_get(user_id):
     user_queue.put(user_id)
     print("Login: received user_id " + str(user_id))
     print("Login - user_queue length: " + str(user_queue.qsize()))
-    # return user_id
     return render_template('lobby.html')
-    # task_data = request.json
-    # if 'task' in task_data:
-    #     task = task_data['task']
-    #     user_queue.put(task)
-    #     return jsonify({"status": "Task added successfully."})
-    #
-    # return jsonify({"error": "Invalid request."}), 400
+
+
+@socketio.on('start_task')
+def start_task(user_id):
+    global users
+    print("start_task: received user_id " + str(user_id))
+    user_room = users['user_id']['room']
+    print("start_task: user_room " + str(user_room))
+    if user_room is not None:
+        emit('task_completed', {'message': user_room}, room=request.sid)
 
 
 # Plain lobby route
