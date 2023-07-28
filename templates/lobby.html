@@ -31,6 +31,7 @@
                     document.getElementById('startButton').addEventListener('click', addText);
 
                     socket.on('task_completed', function(data) {
+                        console.log("socket.on(task_completed): " + data.message)
                         document.getElementById('status').innerHTML = data.message;
                     });
 

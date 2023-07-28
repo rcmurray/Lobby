@@ -51,10 +51,12 @@ def login_get(user_id):
 def start_task(user_id):
     global users
     print("start_task: received user_id " + str(user_id))
-    user_room = users['user_id']['room']
+    user_room = users[user_id]['room']
     print("start_task: user_room " + str(user_room))
     if user_room is not None:
-        emit('task_completed', {'message': user_room}, room=request.sid)
+        room_num = user_room['room_num']
+        print("start_task - emitting 'task_completed', message: " + str(room_num))
+        emit('task_completed', {'message': room_num}, room=request.sid)
 
 
 # Plain lobby route
@@ -62,64 +64,11 @@ def start_task(user_id):
 def index():
     return "Welcome to the Lobby! Enter 127.0.0.1:5000/login/USER_ID"
 
-# Worker function for the consumer
-def worker():
-    global users, unassignedUsers
-    while True:
-        print("Entering worker")
-        while not user_queue.empty():
-            print("worker: queue not empty")
-            user_id = user_queue.get()
-            if user_id is None:
-                print("worker: user_id is None")
-                break
-            else:
-
-                # If user has previously logged in
-                if user_id in users:
-                    user = users[user_id]
-                    room = user['room']
-
-                    # If user already assigned to a room, reassign
-                    if room is not None:
-                        reassign_room(user, room)
-
-                    # else previously logged-in user should already be in the unassignedUsers list
-                    #      -- but double-checking as a failsafe
-                    elif user not in unassignedUsers:
-                        unassignedUsers.append(user)
-
-                # This is a new user
-                else:
-                    user = {'user_id': user_id, 'start_time': time.time(), 'room': None}
-                    users[user_id] = user
-                    print("worker - user " + str(user_id) + " start_time: " + str(user['start_time']))
-                    unassignedUsers.append(user)
-                    print("worker - len(unassignedUsers) = " + str(len(unassignedUsers)))
-
-        if len(unassignedUsers) > 0:
-            assign_rooms()
-            print_room_assignments()
-        time.sleep(1)
-    print("Leaving worker")
-
-
-
-# Create and start the consumer thread
-consumer_thread = threading.Thread(target=worker)
-consumer_thread.start()
 
 # Shut down the consumer thread when the server stops
 def shutdown_server():
     user_queue.put(None)
     consumer_thread.join()
-
-if __name__ == '__main__':
-    app.run(debug=True, threaded=True)
-
-    # When the server is shut down, stop the consumer thread as well
-    shutdown_server()
-
 
 def new_users(num_users):
     next_user_id = 0
@@ -172,28 +121,6 @@ def assign_rooms():
             if len(users_due_for_suboptimal) >= minUsersPerRoom:
                 assign_new_room(len(users_due_for_suboptimal))
     unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
-
-
-
-
-def assign_rooms_PREVIOUS():
-    global unassignedUsers
-    i = 0
-    while True:
-        i += 1
-        if len(unassignedUsers) > 0:
-            if fillRoomsUnderTarget:
-                fill_rooms_under_target()
-            if len(unassignedUsers) >= targetUsersPerRoom:
-                assign_new_rooms(targetUsersPerRoom)
-            if (len(unassignedUsers) > 0) and overFillRooms:
-                overfill_rooms()
-            if len(unassignedUsers) > 0:
-                users_due_for_suboptimal = get_users_due_for_suboptimal()
-                if len(users_due_for_suboptimal) > 0:
-                    assign_new_room(len(users_due_for_suboptimal))
-        unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
-        time.sleep(1)
 
 
 
@@ -264,7 +191,7 @@ def assign_new_room(num_users):
     global unassignedUsers, rooms, availableRooms, nextRoomNum
     nextRoomNum += 1
     url = urlPrefix + str(nextRoomNum)
-    room = {'url': url, 'start_time': time.time(), 'users': [], 'num_users': 0}
+    room = {'room_num': str(nextRoomNum), 'url': url, 'start_time': time.time(), 'users': [], 'num_users': 0}
     num_users_remaining = num_users
     while (num_users_remaining > 0) and (len(unassignedUsers) > 0):
         next_user = unassignedUsers[0]
@@ -344,6 +271,63 @@ def print_room_assignments():
                 print("   User: " + user['user_id'])
     else:
         print("No rooms yet")
+
+
+
+# Worker function for the consumer
+def worker():
+    global users, unassignedUsers
+    while True:
+        print("Entering worker")
+        while not user_queue.empty():
+            print("worker: queue not empty")
+            user_id = user_queue.get()
+            if user_id is None:
+                print("worker: user_id is None")
+                break
+            else:
+
+                # If user has previously logged in
+                if user_id in users:
+                    user = users[user_id]
+                    room = user['room']
+
+                    # If user already assigned to a room, reassign
+                    if room is not None:
+                        reassign_room(user, room)
+
+                    # else previously logged-in user should already be in the unassignedUsers list
+                    #      -- but double-checking as a failsafe
+                    elif user not in unassignedUsers:
+                        unassignedUsers.append(user)
+
+                # This is a new user
+                else:
+                    user = {'user_id': user_id, 'start_time': time.time(), 'room': None}
+                    users[user_id] = user
+                    print("worker - user " + str(user_id) + " start_time: " + str(user['start_time']))
+                    unassignedUsers.append(user)
+                    print("worker - len(unassignedUsers) = " + str(len(unassignedUsers)))
+
+        if len(unassignedUsers) > 0:
+            assign_rooms()
+            print_room_assignments()
+        time.sleep(1)
+    print("Leaving worker")
+
+
+
+# Create and start the consumer thread
+consumer_thread = threading.Thread(target=worker)
+consumer_thread.start()
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True, threaded=True)
+
+    # When the server is shut down, stop the consumer thread as well
+    shutdown_server()
 
 
 
