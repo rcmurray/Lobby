@@ -54,7 +54,7 @@ def start_task(user_id):
     user_room = users[user_id]['room']
     print("start_task: user_room " + str(user_room))
     if user_room is not None:
-        room_num = user_room['room_num']
+        room_num = "room" + user_room['room_num']
         print("start_task - emitting 'task_completed', message: " + str(room_num))
         emit('task_completed', {'message': room_num}, room=request.sid)
 
