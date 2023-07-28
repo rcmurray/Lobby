@@ -5,7 +5,7 @@ from operator import itemgetter
 import threading
 import queue
 from flask import Flask, request, jsonify, render_template
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, send, emit
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -47,10 +47,17 @@ def login_get(user_id):
     return render_template('lobby.html')
 
 
+@socketio.on('connect')
+def handle_connect():
+    session_id = request.sid
+    print(f"Client connected with session ID: {session_id}")
+
+
 @socketio.on('start_task')
 def start_task(user_id):
     global users
     print("start_task: received user_id " + str(user_id))
+    users[user_id]['socket_id'] = request.sid
     user_room = users[user_id]['room']
     print("start_task: user_room " + str(user_room))
     if user_room is not None:
