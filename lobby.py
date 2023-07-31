@@ -44,13 +44,14 @@ def login_get(user_id):
     user_queue.put(user_id)
     print("Login: received user_id " + str(user_id))
     print("Login - user_queue length: " + str(user_queue.qsize()))
-    return render_template('lobby.html')
+    return render_template('lobby.html', userID=user_id)
 
 
 @socketio.on('user_connect')
-def handle_user_connect(data):
+def handle_user_connect(user_id):
     request_sid = request.sid
-    user_id = data['user_id']
+    # user_id = data['user_id']
+    # print(f"Client connected with request_sid: {request_sid} -- and user_id: " + user_id)
     print(f"Client connected with request_sid: {request_sid} -- and user_id: " + user_id)
 
 
