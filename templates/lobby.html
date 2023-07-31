@@ -32,7 +32,7 @@
                         console.log('Connected to server');
                         // Send user data to the server when connected
 <!--                        const userData = { userData: userID };-->
-                        socket.emit('user_connect', {{ userID }});
+                        socket.emit('user_connect', "{{ userID }}");
                     });
                 </script>
 
