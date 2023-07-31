@@ -2,8 +2,18 @@ import time
 from enum import Enum
 from operator import attrgetter
 from operator import itemgetter
+import threading
+import queue
+from flask import Flask, request, jsonify, render_template
+from flask_socketio import SocketIO, send, emit
 
-targetUsersPerRoom = 4
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+# Queue to hold the users
+user_queue = queue.Queue()
+
+targetUsersPerRoom = 3
 minUsersPerRoom = 2
 maxUsersPerRoom = 6
 maxWaitTimeForSubOptimalAssignment = 10          # seconds
@@ -27,6 +37,54 @@ availableRooms = []
 roomsUnderTarget = []
 users = {}
 unassignedUsers = []
+
+# Route to handle incoming users from the web interface
+@app.route('/login/<user_id>', methods=['GET', 'POST'])
+def login_get(user_id):
+    # user_queue.put(user_id)
+    print("Login: received user_id " + str(user_id))
+    return render_template('lobby.html', userID=user_id)
+
+
+@socketio.on('user_connect')
+def handle_user_connect(user_id):
+    socket_id = request.sid
+    print(f"Client connected with socket_id: {socket_id} -- user_id: " + user_id)
+    user_info = {'user_id': str(user_id), 'socket_id': socket_id}
+    user_queue.put(user_info)
+    print("Login - user_queue length: " + str(user_queue.qsize()))
+    # emit('response_event', {'response': 'Data received successfully'})
+    emit('response_event', "Data received successfully")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    socket_id = request.sid
+    print(f"Client DISCONNECTED -- socket_id: {socket_id}")
+
+
+@socketio.on('start_task')
+def start_task(user_id):
+    global users
+    print("start_task: received user_id " + str(user_id))
+    users[user_id]['socket_id'] = request.sid
+    user_room = users[user_id]['room']
+    print("start_task: user_room " + str(user_room))
+    if user_room is not None:
+        room_num = "room" + user_room['room_num']
+        print("start_task - emitting 'task_completed', message: " + str(room_num))
+        emit('task_completed', {'message': room_num}, room=request.sid)
+
+
+# Plain lobby route
+@app.route('/')
+def index():
+    return "Welcome to the Lobby! Enter 127.0.0.1:5000/login/USER_ID"
+
+
+# Shut down the consumer thread when the server stops
+def shutdown_server():
+    user_queue.put(None)
+    consumer_thread.join()
 
 def new_users(num_users):
     next_user_id = 0
@@ -59,7 +117,7 @@ def new_user(user_id):
 
 
 def reassign_room(user, room):
-    print("user_id " + user['user_id'] + ": RETURN to URL " + room['url'])
+    print("reassign_room - user_id " + user['user_id'] + ": RETURN to URL " + room['url'])
 
 def print_uus():
     print(unassignedUsers)
@@ -67,22 +125,19 @@ def print_uus():
 
 def assign_rooms():
     global unassignedUsers
-    i = 0
-    while True:
-        i += 1
+    if len(unassignedUsers) > 0:
+        if fillRoomsUnderTarget:
+            fill_rooms_under_target()
+        if len(unassignedUsers) >= targetUsersPerRoom:
+            assign_new_rooms(targetUsersPerRoom)
+        if (len(unassignedUsers) > 0) and overFillRooms:
+            overfill_rooms()
         if len(unassignedUsers) > 0:
-            if fillRoomsUnderTarget:
-                fill_rooms_under_target()
-            if len(unassignedUsers) >= targetUsersPerRoom:
-                assign_new_rooms(targetUsersPerRoom)
-            if (len(unassignedUsers) > 0) and overFillRooms:
-                overfill_rooms()
-            if len(unassignedUsers) > 0:
-                users_due_for_suboptimal = get_users_due_for_suboptimal()
-                if len(users_due_for_suboptimal) > 0:
-                    assign_new_room(len(users_due_for_suboptimal))
-        unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
-        time.sleep(1)
+            users_due_for_suboptimal = get_users_due_for_suboptimal()
+            if len(users_due_for_suboptimal) >= minUsersPerRoom:
+                assign_new_room(len(users_due_for_suboptimal))
+    unassignedUsers = prune_users()       # tell users who have been waiting too long to come back later
+
 
 
 # If filling rooms that are under target before adding new rooms
@@ -152,7 +207,7 @@ def assign_new_room(num_users):
     global unassignedUsers, rooms, availableRooms, nextRoomNum
     nextRoomNum += 1
     url = urlPrefix + str(nextRoomNum)
-    room = {'url': url, 'start_time': time.time(), 'users': [], 'num_users': 0}
+    room = {'room_num': str(nextRoomNum), 'url': url, 'start_time': time.time(), 'users': [], 'num_users': 0}
     num_users_remaining = num_users
     while (num_users_remaining > 0) and (len(unassignedUsers) > 0):
         next_user = unassignedUsers[0]
@@ -185,7 +240,9 @@ def assign_room(user,room):
     room['users'].append(user)
     room['num_users'] = len(room['users'])
     unassignedUsers.remove(user)
-    print("user_id " + str(user['user_id']) + ": Go to URL " + room['url'])
+    user_message = str(user['user_id']) + ": Go to URL " + room['url']
+    socketio.emit('update_event', {'message': user_message}, room=user['socket_id'])
+    # print("user_id " + str(user['user_id']) + ": Go to URL " + room['url'])
 
 
 def prune_and_sort_rooms(room_list):
@@ -222,6 +279,83 @@ def prune_users():
             print("user_id " + str(user['user_id']) + ": I'm sorry. There are not enough other users logged in right now to start a session. Please try again later.")
             unassignedUsers.remove(user)
     return unassignedUsers
+
+def print_room_assignments():
+    global rooms
+    if len(rooms) > 0:
+        for room in rooms:
+            print("Room url: "+ room['url'])
+            for user in room['users']:
+                print("   User: " + user['user_id'])
+    else:
+        print("No rooms yet")
+
+
+
+# Worker function for the consumer
+def assigner():
+    global users, unassignedUsers
+    while True:
+        print("Entering assigner")
+        while not user_queue.empty():
+            print("assigner: queue not empty")
+            # user_id = user_queue.get()
+            user_info = user_queue.get()
+            user_id = user_info['user_id']
+            socket_id =  user_info['socket_id']
+            if user_id is None:
+                print("assigner: user_id is None")
+                break
+            if socket_id is None:
+                print("assigner: socket_id is None")
+                break
+            else:
+
+                # If user has previously logged in
+                if user_id in users:
+                    user = users[user_id]
+                    room = user['room']
+
+                    # If user already assigned to a room, reassign
+                    if room is not None:
+                        reassign_room(user, room)
+
+                    # else previously logged-in user should already be in the unassignedUsers list
+                    #      -- but double-checking as a failsafe
+                    elif user not in unassignedUsers:
+                        unassignedUsers.append(user)
+
+                # This is a new user
+                else:
+                    user = {'user_id': user_id, 'start_time': time.time(), 'room': None, 'socket_id': socket_id}
+                    users[user_id] = user
+                    print("assigner - user " + str(user_id) + " start_time: " + str(user['start_time']) + " room: None  socket_id: " + str(socket_id))
+                    unassignedUsers.append(user)
+                    print("assigner - len(unassignedUsers) = " + str(len(unassignedUsers)))
+
+        if len(unassignedUsers) > 0:
+            assign_rooms()
+            print_room_assignments()
+        time.sleep(1)
+    print("Leaving assigner")
+
+
+
+# Create and start the consumer thread
+consumer_thread = threading.Thread(target=assigner)
+consumer_thread.start()
+
+
+
+if __name__ == '__main__':
+    # socketio.run(app, debug=True, threaded=True)
+    socketio.run(app, threaded=True)
+
+    # When the server is shut down, stop the consumer thread as well
+    shutdown_server()
+
+
+
 
 
 
