@@ -117,7 +117,11 @@ def new_user(user_id):
 
 
 def reassign_room(user, room):
-    print("reassign_room - user_id " + user['user_id'] + ": RETURN to URL " + room['url'])
+    # print("reassign_room - user_id " + user['user_id'] + ": RETURN to URL " + room['url'])
+    print("reassign_room message: ")
+    user_message = str(user['user_id']) + ": Return to URL " + room['url']
+    print("reassign_room message: " + user_message)
+    socketio.emit('update_event', {'message': user_message}, room=user['socket_id'])
 
 def print_uus():
     print(unassignedUsers)
@@ -313,11 +317,14 @@ def assigner():
 
                 # If user has previously logged in
                 if user_id in users:
+                    print("assigner: user " + str(user_id) + " has previously logged in")
                     user = users[user_id]
                     room = user['room']
+                    user['socket_id'] = socket_id
 
                     # If user already assigned to a room, reassign
                     if room is not None:
+                        print("assigner: user " + str(user_id) + " already has room " + str(room))
                         reassign_room(user, room)
 
                     # else previously logged-in user should already be in the unassignedUsers list
