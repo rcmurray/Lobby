@@ -31,8 +31,17 @@
                     socket.on('connect', () => {
                         console.log('Connected to server');
                         // Send user data to the server when connected
-<!--                        const userData = { userData: userID };-->
                         socket.emit('user_connect', "{{ userID }}");
+                    });
+
+                    socket.on('response_event', function(data) {
+                        // Update the content of the 'status' element with the received data
+                        console.log('response_event received with data: ' + data);
+                    });
+
+                    socket.on('update_event', function(data) {
+                        // Update the content of the 'status' element with the received data
+                        document.getElementById('status').innerHTML = data.message;
                     });
                 </script>
 

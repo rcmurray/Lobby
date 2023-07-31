@@ -41,24 +41,25 @@ unassignedUsers = []
 # Route to handle incoming users from the web interface
 @app.route('/login/<user_id>', methods=['GET', 'POST'])
 def login_get(user_id):
-    user_queue.put(user_id)
+    # user_queue.put(user_id)
     print("Login: received user_id " + str(user_id))
-    print("Login - user_queue length: " + str(user_queue.qsize()))
     return render_template('lobby.html', userID=user_id)
 
 
 @socketio.on('user_connect')
 def handle_user_connect(user_id):
-    request_sid = request.sid
-    # user_id = data['user_id']
-    # print(f"Client connected with request_sid: {request_sid} -- and user_id: " + user_id)
-    print(f"Client connected with request_sid: {request_sid} -- and user_id: " + user_id)
-
+    socket_id = request.sid
+    print(f"Client connected with socket_id: {socket_id} -- user_id: " + user_id)
+    user_info = {'user_id': str(user_id), 'socket_id': socket_id}
+    user_queue.put(user_info)
+    print("Login - user_queue length: " + str(user_queue.qsize()))
+    # emit('response_event', {'response': 'Data received successfully'})
+    emit('response_event', "Data received successfully")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    request_sid = request.sid
-    print(f"Client DISCONNECTED -- request_sid: {request_sid}")
+    socket_id = request.sid
+    print(f"Client DISCONNECTED -- socket_id: {socket_id}")
 
 
 @socketio.on('start_task')
@@ -239,7 +240,9 @@ def assign_room(user,room):
     room['users'].append(user)
     room['num_users'] = len(room['users'])
     unassignedUsers.remove(user)
-    print("user_id " + str(user['user_id']) + ": Go to URL " + room['url'])
+    user_message = str(user['user_id']) + ": Go to URL " + room['url']
+    socketio.emit('update_event', {'message': user_message}, room=user['socket_id'])
+    # print("user_id " + str(user['user_id']) + ": Go to URL " + room['url'])
 
 
 def prune_and_sort_rooms(room_list):
@@ -290,15 +293,21 @@ def print_room_assignments():
 
 
 # Worker function for the consumer
-def worker():
+def assigner():
     global users, unassignedUsers
     while True:
-        print("Entering worker")
+        print("Entering assigner")
         while not user_queue.empty():
-            print("worker: queue not empty")
-            user_id = user_queue.get()
+            print("assigner: queue not empty")
+            # user_id = user_queue.get()
+            user_info = user_queue.get()
+            user_id = user_info['user_id']
+            socket_id =  user_info['socket_id']
             if user_id is None:
-                print("worker: user_id is None")
+                print("assigner: user_id is None")
+                break
+            if socket_id is None:
+                print("assigner: socket_id is None")
                 break
             else:
 
@@ -318,22 +327,22 @@ def worker():
 
                 # This is a new user
                 else:
-                    user = {'user_id': user_id, 'start_time': time.time(), 'room': None}
+                    user = {'user_id': user_id, 'start_time': time.time(), 'room': None, 'socket_id': socket_id}
                     users[user_id] = user
-                    print("worker - user " + str(user_id) + " start_time: " + str(user['start_time']))
+                    print("assigner - user " + str(user_id) + " start_time: " + str(user['start_time']) + " room: None  socket_id: " + str(socket_id))
                     unassignedUsers.append(user)
-                    print("worker - len(unassignedUsers) = " + str(len(unassignedUsers)))
+                    print("assigner - len(unassignedUsers) = " + str(len(unassignedUsers)))
 
         if len(unassignedUsers) > 0:
             assign_rooms()
             print_room_assignments()
         time.sleep(1)
-    print("Leaving worker")
+    print("Leaving assigner")
 
 
 
 # Create and start the consumer thread
-consumer_thread = threading.Thread(target=worker)
+consumer_thread = threading.Thread(target=assigner)
 consumer_thread.start()
 
 
