@@ -47,10 +47,11 @@ def login_get(user_id):
     return render_template('lobby.html')
 
 
-@socketio.on('connect')
-def handle_connect():
+@socketio.on('user_connect')
+def handle_user_connect(data):
     request_sid = request.sid
-    print(f"Client connected with request_sid: {request_sid}")
+    user_id = data['user_id']
+    print(f"Client connected with request_sid: {request_sid} -- and user_id: " + user_id)
 
 
 @socketio.on('disconnect')
@@ -337,7 +338,8 @@ consumer_thread.start()
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, threaded=True)
+    # socketio.run(app, debug=True, threaded=True)
+    socketio.run(app, threaded=True)
 
     # When the server is shut down, stop the consumer thread as well
     shutdown_server()

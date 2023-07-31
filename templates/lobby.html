@@ -22,38 +22,51 @@
                 <br/>
                 <br/>
                 <div id="status"></div>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
-                <script type="text/javascript">
-                    const statusContainer = document.getElementById('status');
+<!--                <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>-->
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
 
-                    var connected = false;
+                <script>
+                    const socket = io.connect('http://' + document.domain + ':' + location.port);
 
-                    var socket = io.connect();
-
-                    document.getElementById('startButton').addEventListener('click', addText);
-
-                    socket.on('connect', function() {
-                        console.log('***************  Socket.IO connected!  ***************');
-                        connected = true;
-                        console.log('=== socket.emit start_task for Rob200 ===');
-                        socket.emit('start_task', "Rob200");
+                    socket.on('connect', () => {
+                        console.log('Connected to server');
+                        // Send user data to the server when connected
+                        const userData = { user_id: 'Rob200' };
+                        socket.emit('user_connect', userData);
                     });
-
-                    socket.on('disconnect', function() {
-                        console.log('!!!!!!!!!!!!!!!  Socket.IO DISconnected!  !!!!!!!!!!!!!!!');
-                        connected = false;
-                    });
-
-                    socket.on('task_completed', function(data) {
-                        console.log("socket.on(task_completed): " + data.message)
-                        document.getElementById('status').innerHTML = data.message;
-                    });
-
-                    function addText() {
-                        socket.emit('start_task', "Rob200");
-                        document.getElementById('status').innerHTML = 'Task in progress...';
-                      }
                 </script>
+
+<!--                <script type="text/javascript">-->
+<!--                    const statusContainer = document.getElementById('status');-->
+
+<!--                    var connected = false;-->
+
+<!--                    var socket = io.connect();-->
+
+<!--                    document.getElementById('startButton').addEventListener('click', addText);-->
+
+<!--                    socket.on('connect', function() {-->
+<!--                        console.log('***************  Socket.IO connected!  ***************');-->
+<!--                        connected = true;-->
+<!--                        console.log('=== socket.emit start_task for Rob200 ===');-->
+<!--                        socket.emit('start_task', "Rob200");-->
+<!--                    });-->
+
+<!--                    socket.on('disconnect', function() {-->
+<!--                        console.log('!!!!!!!!!!!!!!!  Socket.IO DISconnected!  !!!!!!!!!!!!!!!');-->
+<!--                        connected = false;-->
+<!--                    });-->
+
+<!--                    socket.on('task_completed', function(data) {-->
+<!--                        console.log("socket.on(task_completed): " + data.message)-->
+<!--                        document.getElementById('status').innerHTML = data.message;-->
+<!--                    });-->
+
+<!--                    function addText() {-->
+<!--                        socket.emit('start_task', "Rob200");-->
+<!--                        document.getElementById('status').innerHTML = 'Task in progress...';-->
+<!--                      }-->
+<!--                </script>-->
 	            <br/>
 			</fieldset>
 		</form>
