@@ -320,6 +320,7 @@ def assigner():
                     print("assigner: user " + str(user_id) + " has previously logged in")
                     user = users[user_id]
                     room = user['room']
+                    user['socket_id'] = socket_id
 
                     # If user already assigned to a room, reassign
                     if room is not None:
