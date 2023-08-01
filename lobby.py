@@ -245,6 +245,7 @@ def assign_room(user,room):
     room['num_users'] = len(room['users'])
     unassignedUsers.remove(user)
     user_message = str(user['user_id']) + ": Go to URL " + room['url']
+    print("assign_room: socket_id: " + user['socket_id'] + "    message: " + user_message)
     socketio.emit('update_event', {'message': user_message}, room=user['socket_id'])
     # print("user_id " + str(user['user_id']) + ": Go to URL " + room['url'])
 

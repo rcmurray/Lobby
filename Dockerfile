@@ -16,4 +16,5 @@ EXPOSE 5000
 ENV FLASK_APP=lobby.py
 
 # Start the Flask app
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+#CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["python", "-u", "-m", "gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "lobby:app"]
