@@ -356,7 +356,7 @@ consumer_thread.start()
 
 if __name__ == '__main__':
     # socketio.run(app, debug=True, threaded=True)
-    socketio.run(app, threaded=True, port=6000)
+    socketio.run(app, threaded=True, port=5000)
 
     # When the server is shut down, stop the consumer thread as well
     shutdown_server()
