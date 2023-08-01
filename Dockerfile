@@ -10,7 +10,7 @@ COPY . /lobby
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose the port on which your Flask app runs (change this if your app uses a different port)
-EXPOSE 6000
+EXPOSE 5000
 
 # Set the environment variable to run the Flask app
 ENV FLASK_APP=lobby.py
